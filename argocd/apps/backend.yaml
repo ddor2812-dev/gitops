@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: web
+  name: backend
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/ddor2812-dev/gitops.git
     targetRevision: main
-    path: k8s/web
+    path: k8s/backend
   destination:
     server: https://kubernetes.default.svc
     namespace: demo
@@ -17,4 +17,4 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true # Thêm option này để tự tạo namespace 'demo' nếu chưa có
+    - CreateNamespace=true
