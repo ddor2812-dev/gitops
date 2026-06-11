@@ -19,7 +19,7 @@ spec:
   replicas: 2
   selector:
     matchLabels:
-      app: web
+      app: webddd
   template:
     metadata:
       labels:
