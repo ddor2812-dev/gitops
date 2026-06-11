@@ -1,0 +1,26 @@
+name: validate
+
+# 1. Kịch bản này chỉ chạy khi có một Pull Request (PR) đánh vào nhánh main
+# và PR đó có sự thay đổi file nằm bên trong thư mục k8s/
+on:
+  pull_request:
+    paths:
+      - "k8s/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      # Bước 1: Kéo code từ nhánh PR về máy ảo của GitHub
+      - uses: actions/checkout@v4
+
+      # Bước 2: Tải và cài đặt công cụ Kubeconform (bản linux amd64) vào hệ thống
+      - name: Install Kubeconform
+        run: |
+          curl -sSLo kc.tgz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kc.tgz && sudo mv kubeconform /usr/local/bin/
+
+      # Bước 3: Chạy lệnh kiểm tra nghiêm ngặt (-strict) các file YAML trong thư mục k8s/
+      # Lệnh này chỉ validate schema/cú pháp, tuyệt đối KHÔNG apply vào cluster.
+      - name: Run Validate
+        run: kubeconform -strict -summary k8s/
