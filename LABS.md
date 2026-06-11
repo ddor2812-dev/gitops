@@ -211,4 +211,44 @@ spec:
       - setWeight: 50 # Bước 3: Nếu promote, tăng lên 50% traffic (2 Pod v2, 2 Pod v1)
       - pause:
           duration: 30s # Bước 4: Tự động chờ 30 giây, nếu không có lỗi sẽ tự động lên 100%
+
+---
+
+## 5. Phụ Lục: Xử lý lỗi phổ biến khi cài đặt Prometheus Stack (Too long annotations)
+
+### Mô tả lỗi
+Khi Argo CD đồng bộ Helm Chart `kube-prometheus-stack`, bạn có thể thấy ứng dụng bị kẹt ở trạng thái **OutOfSync** với thông báo lỗi:
+`CustomResourceDefinition.apiextensions.k8s.io "thanosrulers.monitoring.coreos.com" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`
+
+**Nguyên nhân**: Theo mặc định, `kubectl apply` lưu cấu hình cũ vào trường annotation `kubectl.kubernetes.io/last-applied-configuration`. Do các file định nghĩa CRD của Prometheus quá lớn, dung lượng này vượt quá giới hạn 256KB của Kubernetes.
+
+### Cách khắc phục từng bước:
+
+#### Bước 1: Cấu hình Server-Side Apply
+Chúng ta thêm `ServerSideApply=true` vào danh sách `syncOptions` của Application trên Argo CD. Điều này yêu cầu Kubernetes thực hiện ghép cấu hình trên máy chủ mà không tạo annotation dung lượng lớn.
+*(Tôi đã cập nhật cấu hình này trong file `argocd/apps/kube-prometheus-stack.yaml` và đẩy lên Git)*.
+
+#### Bước 2: Dừng tiến trình Retry bị kẹt trên Argo CD
+Do Argo CD tự động thử lại (retry) lệnh đồng bộ cũ bị lỗi, ta cần xóa trạng thái chạy dở dang này bằng lệnh:
+```bash
+kubectl patch application kube-prometheus-stack -n argocd --type json -p '[{"op": "remove", "path": "/operation"}]'
+```
+
+#### Bước 3: Cài đặt thủ công các CRD lớn bằng Server-Side Apply
+Nếu Argo CD vẫn gặp khó khăn trong việc khởi tạo các CRD này lần đầu, bạn hãy chạy trực tiếp các lệnh dưới đây để nạp chúng từ kho chính thức của Prometheus Operator:
+```bash
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagerconfigs.yaml
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagers.yaml
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_prometheusagents.yaml
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_scrapeconfigs.yaml
+kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.74.0/example/prometheus-operator-crd/monitoring.coreos.com_thanosrulers.yaml
+```
+
+#### Bước 4: Yêu cầu Argo CD đồng bộ lại
+Sau khi nạp xong CRD, bạn ra lệnh cho Argo CD đồng bộ lại để kéo các tài nguyên còn lại:
+```bash
+kubectl annotate application kube-prometheus-stack -n argocd argocd.argoproj.io/refresh=hard --overwrite
+```
+
 ```
