@@ -1,18 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: web
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/ddor2812-dev/gitops.git
     targetRevision: main
-    path: argocd/apps        # Trỏ thẳng vào thư mục chứa các app con
+    path: k8s
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: demo
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+    - CreateNamespace=true # Thêm option này để tự tạo namespace 'demo' nếu chưa có
