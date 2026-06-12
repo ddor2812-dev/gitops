@@ -25,7 +25,7 @@ spec:
           name: http
         env:
         - name: VERSION
-          value: "v2"
+          value: "v3"
         - name: ERROR_RATE
           value: "0"
         readinessProbe:
