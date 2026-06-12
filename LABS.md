@@ -119,62 +119,76 @@ Chúng ta sẽ khai báo tài nguyên dạng `Rollout` thay thế cho `Deploymen
 
 ---
 
-### Lab 4: Thực hiện Canary Deployment & Giám sát trực quan
+### Lab 4: Thực Hiện Canary Tự Động Hóa & Đo Lường Cảnh Báo (SLO/Alert)
 
-Bài lab này kiểm chứng sức mạnh của Argo Rollouts khi nâng cấp ứng dụng từ phiên bản `v1` lên `v2`.
+Bài lab này kiểm chứng khả năng tự động hóa 100% của hệ thống GitOps & Progressive Delivery. Chúng ta sẽ nâng cấp API lên bản mới, để hệ thống tự đo lường thông số (Observability), tự đưa ra quyết định nâng cấp hoặc tự động rút lui (Auto-abort & Rollback) nếu chất lượng không đạt SLO (Success Rate >= 95%).
 
-**Các bước thực hiện:**
+---
 
-#### Bước 4.1: Kiểm tra kết nối và Metric hiện tại
-1.  Tạo đường hầm port-forward để truy cập Prometheus UI:
-    ```bash
-    kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090
-    ```
-    Mở trình duyệt: **http://localhost:9090**, chuyển sang tab **Status -> Targets**. Kiểm tra xem target `demo/api-monitor` đã ở trạng thái **UP** chưa.
-2.  Thực hiện một vài request tới API để sinh dữ liệu:
-    ```bash
-    # Port forward tới API service
-    kubectl port-forward svc/api -n demo 8085:8080
-    
-    # Chạy curl liên tục hoặc truy cập trình duyệt http://localhost:8085
-    curl http://localhost:8085/
-    ```
-3.  Vào Prometheus UI, gõ query: `flask_http_request_total` và nhấn **Execute** để xem số lượng request đã được ghi nhận.
-
-#### Bước 4.2: Triển khai Canary phiên bản v2
-1.  Mở file [k8s-api/api.yaml](file:///Users/nguyenphutai/gitops/gitops/k8s-api/api.yaml).
-2.  Thay đổi giá trị biến môi trường `VERSION` từ `"v1"` thành `"v2"`.
-3.  Chạy lệnh theo dõi trạng thái Rollout trong một terminal khác:
+#### Bước 4.1: Kiểm tra kết nối và cấu hình Alerts
+1.  **Mở Port-forward tới các dịch vụ:**
+    *   API Service (Port 8085):
+        ```bash
+        kubectl port-forward svc/api -n demo 8085:8080
+        ```
+    *   Prometheus UI (Port 9090):
+        ```bash
+        kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090
+        ```
+    *   Alertmanager UI (Port 9093):
+        ```bash
+        kubectl port-forward svc/kube-prometheus-stack-alertmanager -n monitoring 9093:9093
+        ```
+2.  **Theo dõi trạng thái Rollout trực quan qua CLI:**
+    Mở một cửa sổ terminal riêng biệt và chạy lệnh theo dõi:
     ```bash
     kubectl argo rollouts get rollout api -n demo --watch
     ```
-4.  Commit và push thay đổi YAML lên Git:
+
+---
+
+#### Bước 4.2: Kịch bản 1 — Nâng cấp Thành công (Bản tốt -> 100% tự động)
+1.  Mở file `k8s-api/api.yaml`, sửa giá trị biến môi trường `VERSION` từ `"v1"` thành `"v2"`. Giữ nguyên `ERROR_RATE` bằng `"0"`.
+2.  Commit và push lên Git:
     ```bash
     git add k8s-api/api.yaml && git commit -m "upgrade: api to v2" && git push origin main
     ```
-5.  Sau khi Argo CD đồng bộ, bạn sẽ quan sát thấy trên màn hình CLI Rollout:
-    *   Argo Rollouts tạo ra 1 pod `v2` (tương ứng với 25% trọng số của tổng số 4 replicas).
-    *   3 pod còn lại vẫn là `v1` (75%).
-    *   Quá trình rollout rơi vào trạng thái **Paused** vô thời hạn do cấu hình `pause: {}` ở bước đầu tiên.
+3.  **Quan sát:**
+    *   Argo CD tự động đồng bộ và Argo Rollouts bắt đầu tạo Pod `v2` (tỷ lệ 25%).
+    *   Một tài nguyên `AnalysisRun` sẽ tự động được sinh ra trong nền và bắt đầu truy vấn Prometheus mỗi 10 giây để kiểm tra tỷ lệ thành công của API.
+    *   Sau 20 giây ở bước 25% và 20 giây ở bước 50%, do tỷ lệ thành công đạt 100% (luôn >= 95%), hệ thống sẽ tự động chuyển sang tỷ lệ 100% thành công tốt đẹp!
 
-#### Bước 4.3: Kiểm tra điều hướng traffic và Quyết định (Promote hoặc Abort)
-1.  Gửi liên tiếp các yêu cầu tới API thông qua lệnh:
+---
+
+#### Bước 4.3: Kịch bản 2 — Bản lỗi tự động Hủy bỏ (Auto-abort & Auto-rollback)
+Bây giờ, chúng ta sẽ giả lập một lỗi nghiêm trọng ở phiên bản `v3` để kiểm thử hệ thống tự bảo vệ.
+1.  Mở file `k8s-api/api.yaml`, sửa `VERSION` thành `"v3"` và đặt `ERROR_RATE` thành `"0.2"` (giả lập 20% yêu cầu sẽ bị lỗi HTTP 500).
+2.  Commit và push lên Git:
     ```bash
-    while true; do curl -s http://localhost:8085/ | grep version; sleep 0.5; done
+    git add k8s-api/api.yaml && git commit -m "upgrade: api to v3 with error simulation" && git push origin main
     ```
-    Bạn sẽ thấy khoảng 25% kết quả trả về chữ `"v2"` và 75% trả về chữ `"v1"`.
-2.  **Kịch bản 1: Mọi thứ chạy tốt -> Promote lên 100%**
-    Nếu bạn hài lòng với phiên bản mới, chạy lệnh sau để tiếp tục rollout:
+3.  **Kích hoạt sinh dữ liệu (Traffic generator):**
+    Chạy lệnh gửi request liên tục trong terminal để tạo metric lỗi cho Prometheus:
     ```bash
-    kubectl argo rollouts promote api -n demo
+    while true; do curl -s http://localhost:8085/ | grep version; sleep 0.2; done
     ```
-    Rollout sẽ tự động tăng tỷ lệ lên 50% -> đợi 30 giây -> và tự động tăng lên 100% hoàn thành phát hành.
-3.  **Kịch bản 2: Phát hiện lỗi -> Abort (Rollback ngay lập tức)**
-    Nếu bạn phát hiện lỗi logic ở phiên bản `v2`, bạn có thể thu hồi ngay lập tức để bảo vệ người dùng bằng lệnh:
+4.  **Quan sát hệ thống tự bảo vệ:**
+    *   **Tự động Hủy bỏ (Auto-abort):** Trên giao diện theo dõi `kubectl argo rollouts`, khi traffic lỗi đạt 20%, Prometheus ghi nhận tỷ lệ thành công chỉ đạt ~80% (dưới ngưỡng 95% của SLO). Sau 3 lần đo liên tiếp bị lỗi, Argo Rollouts sẽ chuyển trạng thái của Rollout từ `Progressing` thành **`Degraded (Aborted)`** và ngay lập tức thu hồi bản `v3`, đưa traffic quay về 100% bản `v2` an toàn!
+    *   **Alert kích hoạt gửi Email:** Vào giao diện Alertmanager (**http://localhost:9093**), bạn sẽ thấy cảnh báo **`ApiHighErrorRate`** chuyển sang màu đỏ kích hoạt (**Firing**). Alertmanager sẽ kích hoạt luồng gửi mail SMTP đến hộp thư `nguyenphutai.dev@gmail.com` của bạn để báo cáo chất lượng dịch vụ sụt giảm.
+
+---
+
+#### Bước 4.4: Kịch bản 3 — Rollback thủ công qua Git cực nhanh (< 5 phút)
+Nếu bạn lỡ push một thay đổi bị lỗi lên Git và muốn khôi phục an toàn:
+1.  Chạy lệnh khôi phục Git commit trước đó:
     ```bash
-    kubectl argo rollouts abort api -n demo
+    git revert HEAD --no-edit
     ```
-    Argo Rollouts sẽ lập tức ngắt toàn bộ traffic khỏi các Pod `v2` và đưa hệ thống về trạng thái `v1` an toàn 100%.
+2.  Push code lên nhánh chính:
+    ```bash
+    git push origin main
+    ```
+3.  Argo CD sẽ tự động phát hiện thay đổi và đồng bộ cụm K8s về đúng trạng thái an toàn trên Git. Toàn bộ quy trình diễn ra hoàn toàn tự động chỉ trong vòng chưa đầy 2 phút, đảm bảo tính nhất quán (no drift) giữa Git và hệ thống thực tế!
 
 ---
 
@@ -198,19 +212,55 @@ spec:
             serviceMonitorSelectorNilUsesHelmValues: false 
 ```
 
-### 4.2. File `k8s-api/api.yaml` (Phần Rollout)
+### 4.2. File `k8s-api/api.yaml` (Phần Rollout và Service)
 ```yaml
-kind: Rollout # Sử dụng tài nguyên Rollout của Argo
+strategy:
+  canary:
+    analysis:
+      templates:
+      - templateName: success-rate # Liên kết với AnalysisTemplate đo lường tự động
+    steps:
+    - setWeight: 25
+    - pause:
+        duration: 20s # Tạm dừng 20s để AnalysisRun thu thập đủ metric đánh giá
+    - setWeight: 50
+    - pause:
+        duration: 20s # Tiếp tục giám sát 20s trước khi lên 100%
+```
+
+### 4.3. File `k8s-api/analysistemplate.yaml`
+```yaml
 spec:
-  replicas: 4 # Tổng số Pod chạy ứng dụng
-  strategy:
-    canary:
-      steps:
-      - setWeight: 25 # Bước 1: Cho 25% traffic (tương đương 1 Pod) chạy bản v2
-      - pause: {}     # Bước 2: Tạm dừng vô hạn để kiểm thử thủ công/chờ promote
-      - setWeight: 50 # Bước 3: Nếu promote, tăng lên 50% traffic (2 Pod v2, 2 Pod v1)
-      - pause:
-          duration: 30s # Bước 4: Tự động chờ 30 giây, nếu không có lỗi sẽ tự động lên 100%
+  metrics:
+  - name: success-rate
+    interval: 10s # Đo lường mỗi 10 giây
+    successCondition: result[0] >= 0.95 # SLO tỷ lệ thành công >= 95%
+    failureLimit: 3 # Cho phép tối đa 3 lần lỗi liên tiếp trước khi rollback
+    provider:
+      prometheus:
+        address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+        query: |
+          sum(rate(flask_http_request_total{status!~"5.*",job="api",namespace="demo"}[1m]))
+          /
+          sum(rate(flask_http_request_total{job="api",namespace="demo"}[1m])) or vector(1)
+```
+
+### 4.4. File `k8s-api/prometheusrule.yaml`
+```yaml
+spec:
+  groups:
+  - name: api.rules
+    rules:
+    - alert: ApiHighErrorRate # Định nghĩa tên Alert
+      expr: |
+        # Kích hoạt alert nếu tỷ lệ lỗi HTTP 5xx vượt quá 5%
+        (sum(rate(flask_http_request_total{status=~"5..",job="api",namespace="demo"}[1m]))
+        /
+        sum(rate(flask_http_request_total{job="api",namespace="demo"}[1m])) or vector(0)) > 0.05
+      for: 10s # Chỉ kích hoạt nếu lỗi liên tục kéo dài trên 10 giây
+      labels:
+        severity: critical
+```
 
 ---
 

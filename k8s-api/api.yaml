@@ -43,12 +43,16 @@ spec:
             cpu: "200m"
   strategy:
     canary:
+      analysis:
+        templates:
+        - templateName: success-rate
       steps:
       - setWeight: 25
-      - pause: {} # Pauses indefinitely until manual promotion
+      - pause:
+          duration: 20s
       - setWeight: 50
       - pause:
-          duration: 30s
+          duration: 20s
 ---
 apiVersion: v1
 kind: Service
