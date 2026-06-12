@@ -17,4 +17,4 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true # Thêm option này để tự tạo namespace 'demo' nếu chưa có
+    - CreateNamespace=true 
