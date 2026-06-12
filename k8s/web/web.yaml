@@ -17,6 +17,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1" # Tạo ứng dụng ở wave 1 (Sau khi có ConfigMap)
 spec:
   replicas: 2
+  invalidField: "This is invalid for testing CI"
   selector:
     matchLabels:
       app: web
