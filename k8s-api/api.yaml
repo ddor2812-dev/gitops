@@ -25,9 +25,9 @@ spec:
           name: http
         env:
         - name: VERSION
-          value: "v5"
+          value: "v3"
         - name: ERROR_RATE
-          value: "0.2"
+          value: "0"
         readinessProbe:
           httpGet:
             path: /healthz
