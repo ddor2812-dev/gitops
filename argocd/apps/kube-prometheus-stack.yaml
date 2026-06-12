@@ -24,7 +24,9 @@ spec:
           config:
             global:
               smtp_smarthost: 'smtp.gmail.com:587'
-              smtp_from: 'alertmanager@example.com'
+              smtp_from: 'nguyenphutai32kg@gmail.com'
+              smtp_auth_username: 'nguyenphutai32kg@gmail.com'
+              smtp_auth_password: 'plcj jhvd sbzd iclr'
               smtp_require_tls: true
             route:
               group_by: ['alertname']
