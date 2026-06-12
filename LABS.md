@@ -131,9 +131,9 @@ Bài lab này kiểm chứng khả năng tự động hóa 100% của hệ thố
         ```bash
         kubectl port-forward svc/api -n demo 8085:8080
         ```
-    *   Prometheus UI (Port 9090):
+    *   Prometheus UI (Port 9095):
         ```bash
-        kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090
+        kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9095:9090
         ```
     *   Alertmanager UI (Port 9093):
         ```bash
@@ -174,7 +174,7 @@ Bây giờ, chúng ta sẽ giả lập một lỗi nghiêm trọng ở phiên b�
     ```
 4.  **Quan sát hệ thống tự bảo vệ:**
     *   **Tự động Hủy bỏ (Auto-abort):** Trên giao diện theo dõi `kubectl argo rollouts`, khi traffic lỗi đạt 20%, Prometheus ghi nhận tỷ lệ thành công chỉ đạt ~80% (dưới ngưỡng 95% của SLO). Sau 3 lần đo liên tiếp bị lỗi, Argo Rollouts sẽ chuyển trạng thái của Rollout từ `Progressing` thành **`Degraded (Aborted)`** và ngay lập tức thu hồi bản `v3`, đưa traffic quay về 100% bản `v2` an toàn!
-    *   **Alert kích hoạt gửi Email:** Vào giao diện Alertmanager (**http://localhost:9093**), bạn sẽ thấy cảnh báo **`ApiHighErrorRate`** chuyển sang màu đỏ kích hoạt (**Firing**). Alertmanager sẽ kích hoạt luồng gửi mail SMTP đến hộp thư `nguyenphutai.dev@gmail.com` của bạn để báo cáo chất lượng dịch vụ sụt giảm.
+    *   **Alert kích hoạt gửi Email:** Vào giao diện Alertmanager (**http://localhost:9093**), bạn sẽ thấy cảnh báo **`ApiHighErrorRate`** chuyển sang màu đỏ kích hoạt (**Firing**). Alertmanager sẽ kích hoạt luồng gửi mail SMTP đến hộp thư `ddor2812@gmail.com` của bạn để báo cáo chất lượng dịch vụ sụt giảm.
 
 ---
 

@@ -36,7 +36,7 @@ spec:
             - name: 'null'
             - name: 'email-notifications'
               email_configs:
-              - to: 'nguyenphutai.dev@gmail.com'
+              - to: 'ddor2812@gmail.com'
                 send_resolved: true
   destination:
     server: https://kubernetes.default.svc
