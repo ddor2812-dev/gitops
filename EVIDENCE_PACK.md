@@ -158,11 +158,11 @@ Server Version: v1.35.1
 
 > 📸 **Ảnh chụp Argo CD UI**: Dashboard hiển thị tất cả Applications
 >
-> ![Argo CD Dashboard — tất cả apps Synced & Healthy](screenshots/argocd-dashboard-all-apps.png)
+> ![Argo CD Dashboard — tất cả apps Synced & Healthy](evidence/argocd-dashboard-all-apps.png)
 
 > 📸 **Ảnh chụp Argo CD UI**: Chi tiết Root Application (App-of-Apps)
 >
-> ![Argo CD Root App — App-of-Apps pattern](screenshots/argocd-root-app-detail.png)
+> ![Argo CD Root App — App-of-Apps pattern](evidence/argocd-root-app-detail.png)
 
 ```
 $ kubectl get application -n argocd
@@ -591,10 +591,6 @@ alertmanager:
 > 📸 **Ảnh chụp Argo CD UI**: Kịch bản 1 — Canary đang tiến hành (25% → 50%)
 >
 > ![Canary in progress — 25% weight](evidence/canary-in-progress-25.png)
-
-> 📸 **Ảnh chụp Argo CD UI**: Kịch bản 1 — Canary hoàn tất (100%)
->
-> ![Canary completed — 100% healthy](evidence/canary-completed-100.png)
 
 > 📸 **Ảnh chụp Argo CD UI hoặc terminal**: Kịch bản 2 — AnalysisRun Failed → Auto-rollback
 >
