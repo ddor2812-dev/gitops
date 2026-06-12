@@ -33,6 +33,7 @@ spec:
               repeat_interval: 5m
               receiver: 'email-notifications'
             receivers:
+            - name: 'null'
             - name: 'email-notifications'
               email_configs:
               - to: 'nguyenphutai.dev@gmail.com'
